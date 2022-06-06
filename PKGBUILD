@@ -1,7 +1,6 @@
 # Maintainer: Vince van Oosten <techhazard@codeforyouand.me>
 pkgname=iwd-firewalld-zone
-#pkgver=1.0.2
-pkgver=0.1.0
+pkgver=1.0.0
 pkgrel=1
 epoch=
 pkgdesc=""
@@ -22,7 +21,7 @@ install=PKGBUILD.install
 changelog=
 source=("${pkgname}.tgz::${url}/archive/refs/tags/${pkgver}.tar.gz")
 validpgpkeys=()
-sha256sums=('0915bfe7f907a05fbcf05b1ed84707f76e58c03548730aecc501f7f9f87d1496')
+sha256sums=('34db10cf6e465068c206fe2d8c3d24561c25e771cd4000c2d7baca365b496546')
 
 
 prepare() {
