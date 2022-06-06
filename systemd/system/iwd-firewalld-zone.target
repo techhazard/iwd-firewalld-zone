@@ -1,0 +1,6 @@
+[Unit]
+Description=Target for all %p services
+StopWhenUnneeded=yes
+
+[Install]
+WantedBy=%p.path

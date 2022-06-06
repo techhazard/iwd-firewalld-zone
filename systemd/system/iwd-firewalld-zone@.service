@@ -1,0 +1,17 @@
+[Unit]
+After=firewalld.service iwd.service
+Before=%p.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/%p %i
+
+CPUQuota=10%
+CPUAccounting=yes
+MemoryAccounting=yes
+MemoryHigh=100M
+MemoryMax=250M
+
+[Install]
+WantedBy=%p.target
+DefaultInstance=detect

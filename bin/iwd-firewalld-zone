@@ -1,0 +1,117 @@
+#!/bin/bash
+set -euo pipefail
+
+# needs: iwctl, grep, firewall-cmd, sed, tr, od, 
+
+IWD_DIR="${XDG_CONFIG_HOME:-/var/lib}/iwd"
+
+function err() {
+	echo >&2 "${interface}: ${*}"
+}
+
+function get_wireless_interfaces() {
+	interface_paths=( $(ls -d /sys/class/net/*/wireless/ || true) )
+
+	for if_path in "${interface_paths[@]}"; do
+		#    /sys/class/net/wlan0/wireless/
+		#   0 1   2     3   4     5
+		IFS='/' read -ra path_parts <<< "${if_path}"
+		echo "${path_parts[4]}"
+	done
+}
+
+
+function main() {
+
+	#echo "${IWD_DIR@A}"
+
+	interfaces=( "${@}" )
+
+	if [[ "${interfaces[0]}" = 'detect' ]]; then
+		echo >&2 -n "Detecting wireless interfaces... "
+		interfaces=( $(get_wireless_interfaces) )
+		echo >&2 'done'
+	fi
+
+	for interface in "${interfaces[@]}"; do
+		err "Checking Firewalld Zone... "
+		update_firewall_zone "${interface}"
+		err "Check complete"
+	done
+}
+
+
+function update_firewall_zone() {
+	local interface="${1}"
+
+	network="$(get_current_network "${interface}")"
+	current_zone="$(get_current_zone "${interface}")"
+
+	if [[ -z "${network}" ]]; then
+		err "Not connected"
+		if [[ -n "${current_zone}" ]]; then
+			remove_from_zone "${interface}" "${current_zone}"
+		fi
+		return 0
+	fi
+
+	wanted_zone="$(get_wanted_zone "${network}" || firewall-cmd --get-default-zone )"
+
+	err "Current Zone: ${current_zone:-none}"
+	err "Wanted  Zone: ${wanted_zone:-none}"
+
+	if [[ "${current_zone}" = "${wanted_zone}" ]]; then
+		return 0
+	fi
+
+	echo >&2 "Setting firewall zone for network ${network} to zone ${wanted_zone}"
+
+	if [[ -n "${current_zone}" ]]; then
+		remove_from_zone "${interface}" "${current_zone}"
+	fi
+
+	if [[ -n "${wanted_zone}" ]]; then
+		add_to_zone "${interface}" "${wanted_zone}"
+	fi
+
+	return 0
+}
+
+function add_to_zone() {
+	local interface="${1}"
+	local zone="${2}"
+	err "Adding to Zone ${zone}"
+	firewall-cmd --zone="${zone}" --add-interface="${interface}" >/dev/null
+}
+
+function remove_from_zone() {
+	local interface="${1}"
+	local zone="${2}"
+	err "Removing from Zone ${zone}"
+	firewall-cmd --zone="${zone}" --remove-interface="${interface}" >/dev/null
+}
+
+function get_current_network() {
+	iwctl station "${1}" show | sed -nr -e '/Connected network/s/\s+Connected network\s+//p' | sed -re 's/\s+$//'
+}
+
+function get_current_zone() {
+	firewall-cmd --get-zone-of-interface="${1}" 2>/dev/null || true
+}
+
+function get_wanted_zone() {
+	local network="${1}"
+	local file=("${IWD_DIR}/${network}".*)
+	echo >&2 "${file}"
+
+	if [[ ! -r  "${file}" ]]; then
+		# sometimes the IWD file is a hexadecimal encoding of the name, prefixed by a single = symbol
+		echo >&2 "trying hex file"
+		hex_network="=$(od -A n -t x1 <<<"${network}" | tr -d ' ')"
+		file=("${IWD_DIR}/${hex_network}".*)
+	fi
+
+	(grep '^FirewalldZone=' "${file}" 2>/dev/null | awk -F= '{print $2}')
+}
+
+main "${1}"

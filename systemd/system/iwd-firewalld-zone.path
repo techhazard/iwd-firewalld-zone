@@ -1,0 +1,7 @@
+[Path]
+Unit=%p.target
+PathChanged=/var/lib/iwd
+
+[Install]
+WantedBy=multi-user.target
+
