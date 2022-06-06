@@ -15,3 +15,4 @@ MemoryMax=250M
 [Install]
 WantedBy=%p.target
 DefaultInstance=detect
+Also=%p.path

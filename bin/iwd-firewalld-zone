@@ -1,42 +1,133 @@
 #!/bin/bash
 set -euo pipefail
 
-# needs: iwctl, grep, firewall-cmd, sed, tr, od, 
+DEBUG="${DEBUG:-}"
+DEBUG="true"
+
+# needs:
+#   iwd: iwctl
+#   firewalld: firewall-cmd
+#   gawk: awk
+#   sed: sed
+#   coreutils: tr, od, stat
+#   bash: read, echo, local
 
 IWD_DIR="${XDG_CONFIG_HOME:-/var/lib}/iwd"
 
-function err() {
+function msg() {
 	echo >&2 "${interface}: ${*}"
 }
 
-function get_wireless_interfaces() {
-	interface_paths=( $(ls -d /sys/class/net/*/wireless/ || true) )
+function dbg() {
+	if [[ -n "${DEBUG}" ]]; then
+		echo >&2 "[DEBUG]: ${*}"
+	fi
+}
 
+function list_wireless_interfaces() {
+	read -ra interface_paths < <(stat -c '%n' /sys/class/net/*/wireless/)
+
+	# awk is 1-based ($0 is the whole line)
+	# 1  2   3     4   5     6
+	#  /sys/class/net/wlan0/wireless/ -> wlan0
 	for if_path in "${interface_paths[@]}"; do
-		#    /sys/class/net/wlan0/wireless/
-		#   0 1   2     3   4     5
-		IFS='/' read -ra path_parts <<< "${if_path}"
-		echo "${path_parts[4]}"
+		awk -F/ '{print $5}' <<<"${if_path}"
 	done
 }
 
 
-function main() {
+#############
+# firewalld #
+#############
 
-	#echo "${IWD_DIR@A}"
+function get_default_zone() {
+	dbg "using default zone"
+	firewall-cmd --get-default-zone
+}
+
+function get_current_zone() {
+	firewall-cmd --get-zone-of-interface="${1}" 2>/dev/null || true
+}
+
+function add_to_zone() {
+	local interface="${1}"
+	local zone="${2}"
+	dbg "Adding to Zone ${zone}"
+	firewall-cmd --zone="${zone}" --add-interface="${interface}" >/dev/null
+}
+
+function remove_from_zone() {
+	local interface="${1}"
+	local zone="${2}"
+	dbg "Removing from Zone ${zone}"
+	firewall-cmd --zone="${zone}" --remove-interface="${interface}" >/dev/null
+}
+
+
+#######
+# iwd #
+#######
+
+# The SSID appears verbatim in the name if it contains only alphanumeric char‐
+# acters, spaces, underscores or minus signs.  Otherwise it is encoded as an equal sign
+# followed by the lower-case hex encoding of the name.
+function config_file() {
+	local network="${1}"
+	local filename="${IWD_DIR}"
+
+	if [[ "${network}" =~ ^[a-zA-Z0-9_' '-]+$ ]]; then
+		filename+="/${network}"
+		dbg "Using plain filename for network ${network}:" "${filename}."*
+	else
+		filename+="/=$(echo -n "${network}" | hexencode)"
+		dbg "Using hexencoded filename for network ${network}:" "${filename}."*
+	fi
+	# we use a file-glob to auto-detect the extension
+	# TODO: what if the file doesn't exist? does that ever happen?
+	# iwd stores all connection data there, so probably not
+	echo "${filename}."*
+}
+
+function hexencode() {
+	od -A n -t x1 | tr -d ' '
+}
+
+function get_current_network() {
+	local interface="${1}"
+	# split on two or more spaces
+	iwctl station "${interface}" show | awk -F ' {2,}' '$2=="Connected network" {$1=""; $2=""; print $0}' | trim_whitespace
+}
+
+# trim all whitespace at start and end
+function trim_whitespace() {
+	sed -r -e 's/^\s+//' -e 's/\s+$//'
+}
+
+function get_wanted_zone() {
+	local network="${1}"
+	awk -F= 'BEGIN{rc=1} $1=="FirewalldZone" {print; rc=0; exit} END{exit rc}' "$(config_file "${1}")" 2>/dev/null
+}
+
+
+########
+# main #
+########
+
+function main() {
 
 	interfaces=( "${@}" )
 
 	if [[ "${interfaces[0]}" = 'detect' ]]; then
 		echo >&2 -n "Detecting wireless interfaces... "
-		interfaces=( $(get_wireless_interfaces) )
+		read -ra interfaces < <(list_wireless_interfaces)
 		echo >&2 'done'
+		dbg "Found interfaces: ${interfaces[*]}"
 	fi
 
 	for interface in "${interfaces[@]}"; do
-		err "Checking Firewalld Zone... "
+		msg "Checking Firewalld Zone... "
 		update_firewall_zone "${interface}"
-		err "Check complete"
+		msg "Check complete"
 	done
 }
 
@@ -45,10 +136,11 @@ function update_firewall_zone() {
 	local interface="${1}"
 
 	network="$(get_current_network "${interface}")"
+	dbg "network='${network}'"
 	current_zone="$(get_current_zone "${interface}")"
 
 	if [[ -z "${network}" ]]; then
-		err "Not connected"
+		msg "Not connected"
 		if [[ -n "${current_zone}" ]]; then
 			remove_from_zone "${interface}" "${current_zone}"
 		fi
@@ -57,14 +149,15 @@ function update_firewall_zone() {
 
 	wanted_zone="$(get_wanted_zone "${network}" || firewall-cmd --get-default-zone )"
 
-	err "Current Zone: ${current_zone:-none}"
-	err "Wanted  Zone: ${wanted_zone:-none}"
+	dbg "Current Zone: ${current_zone:-none}"
+	dbg "Wanted  Zone: ${wanted_zone:-none}"
 
 	if [[ "${current_zone}" = "${wanted_zone}" ]]; then
+		msg "Interface ${interface} is already in zone ${wanted_zone}"
 		return 0
 	fi
 
-	echo >&2 "Setting firewall zone for network ${network} to zone ${wanted_zone}"
+	dbg "Setting firewall zone for network ${network} to zone ${wanted_zone}"
 
 	if [[ -n "${current_zone}" ]]; then
 		remove_from_zone "${interface}" "${current_zone}"
@@ -75,43 +168,6 @@ function update_firewall_zone() {
 	fi
 
 	return 0
-}
-
-function add_to_zone() {
-	local interface="${1}"
-	local zone="${2}"
-	err "Adding to Zone ${zone}"
-	firewall-cmd --zone="${zone}" --add-interface="${interface}" >/dev/null
-}
-
-function remove_from_zone() {
-	local interface="${1}"
-	local zone="${2}"
-	err "Removing from Zone ${zone}"
-	firewall-cmd --zone="${zone}" --remove-interface="${interface}" >/dev/null
-}
-
-function get_current_network() {
-	iwctl station "${1}" show | sed -nr -e '/Connected network/s/\s+Connected network\s+//p' | sed -re 's/\s+$//'
-}
-
-function get_current_zone() {
-	firewall-cmd --get-zone-of-interface="${1}" 2>/dev/null || true
-}
-
-function get_wanted_zone() {
-	local network="${1}"
-	local file=("${IWD_DIR}/${network}".*)
-	echo >&2 "${file}"
-
-	if [[ ! -r  "${file}" ]]; then
-		# sometimes the IWD file is a hexadecimal encoding of the name, prefixed by a single = symbol
-		echo >&2 "trying hex file"
-		hex_network="=$(od -A n -t x1 <<<"${network}" | tr -d ' ')"
-		file=("${IWD_DIR}/${hex_network}".*)
-	fi
-
-	(grep '^FirewalldZone=' "${file}" 2>/dev/null | awk -F= '{print $2}')
 }
 
 main "${1}"

@@ -1,0 +1,41 @@
+
+post_install() {
+	IWD_DIR="${XDG_CONFIG_HOME:-/var/lib}/iwd"
+	cat >&2 <<-EOF
+To use iwd-firewalld-zone you should do the following:
+
+    Add a line with FirewalldZone=ZONE in the [Settings] section
+	    for each wireless network in ${IWD_DIR}
+        If that line is not found, the default zone is used.
+
+         ...
+         [Settings]
+         FirewalldZone=trusted
+         ...
+
+    OPTIONAL: to use for a specific interface only, e.g. wlan0
+    	systemctl disable iwd-firewalld-zone@.service
+    	systemctl enable iwd-firewalld-zone@wlan0.service
+
+		by default it auto-detects all wireless interfaces
+
+	All done!
+
+	check logs with:
+		journalctl -u iwd-firewall-zone@* -f
+EOF
+
+	systemctl enable --now iwd-firewall-zone@.service
+
+}
+
+post_upgrade() {
+	post_install
+}
+
+
+pre_remove() {
+	for unit in $(systemctl list-dependencies --plain iwd-firewalld-zone.target); do
+		systemctl disable --now "${unit}"
+	done
+}
