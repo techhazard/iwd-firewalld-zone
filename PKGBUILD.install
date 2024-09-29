@@ -22,10 +22,10 @@ To use iwd-firewalld-zone you should do the following:
 	All done!
 
 	check logs with:
-		journalctl -u iwd-firewall-zone@* -f
+		journalctl -u iwd-firewalld-zone@* -f
 EOF
 
-	systemctl enable --now iwd-firewall-zone@.service
+	systemctl enable --now iwd-firewalld-zone@.service
 
 }
 
