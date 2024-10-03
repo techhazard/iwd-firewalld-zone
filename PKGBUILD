@@ -1,43 +1,28 @@
 # Maintainer: Vince van Oosten <techhazard@codeforyouand.me>
-pkgname=iwd-firewalld-zone
+# Contributor: Rhys Perry <rhysperry111 AT gmail.com>
+pkgname=iwd-firewalld-zone-git
+_srcname=iwd-firewalld-zone
 pkgver=1.0.0
 pkgrel=1
-epoch=
-pkgdesc=""
-arch=('any')
-url="https://github.com/techhazard/${pkgname}"
-license=('GPL3')
-groups=()
+pkgdesc='Automatically move wireless interface into firewalld zone based on setting in relevant iwd network file '
+arch=(any)
+url='https://github.com/techhazard/iwd-firewalld-zone'
+license=('GPL-3.0-only')
 depends=(systemd bash firewalld iwd gawk coreutils sed)
 makedepends=(git)
-checkdepends=()
-optdepends=()
 provides=()
 conflicts=()
-replaces=()
-backup=()
-options=()
 install=PKGBUILD.install
-changelog=
-source=("${pkgname}.tgz::${url}/archive/refs/tags/${pkgver}.tar.gz")
-validpgpkeys=()
-sha256sums=('34db10cf6e465068c206fe2d8c3d24561c25e771cd4000c2d7baca365b496546')
+source=('git+https://github.com/techhazard/iwd-firewalld-zone')
+sha256sums=('SKIP')
 
 
-prepare() {
-	true
-}
-
-build() {
-	true
-}
-
-check() {
-	true
+pkgver() {
+  cd "${_srcname}"
+  git describe --long --tags --abbrev=7 | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
 }
 
 package() {
-	src="${pkgname}-${pkgver}"
-	install -D -m 755 -t $pkgdir/usr/bin/                "${src}"/bin/*
-	install -D -m 644 -t $pkgdir/usr/lib/systemd/system/ "${src}"/systemd/system/*
+	install -Dm 755 -t "${pkgdir}"/usr/bin/ "${_srcname}"/bin/*
+	install -Dm 644 -t "${pkgdir}"/usr/lib/systemd/system/ "${_srcname}"/systemd/system/*
 }
