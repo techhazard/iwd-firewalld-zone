@@ -1,5 +1,5 @@
 [Path]
-Unit=%p.target
+Unit=iwd-firewalld-zone.target
 PathChanged=/var/lib/iwd
 
 [Install]
