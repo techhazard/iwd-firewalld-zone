@@ -1,10 +1,10 @@
 [Unit]
 After=firewalld.service iwd.service
-Before=%p.target
+Before=iwd-firewalld-zone.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/%p %i
+ExecStart=/usr/bin/iwd-firewalld-zone %i
 
 CPUQuota=10%
 CPUAccounting=yes
@@ -13,6 +13,6 @@ MemoryHigh=100M
 MemoryMax=250M
 
 [Install]
-WantedBy=%p.target
+WantedBy=iwd-firewalld-zone.target
 DefaultInstance=detect
-Also=%p.path
+Also=iwd-firewalld-zone.path

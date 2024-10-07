@@ -1,6 +1,6 @@
 [Unit]
-Description=Target for all %p services
+Description=Target for all iwd-firewalld-zone services
 StopWhenUnneeded=yes
 
 [Install]
-WantedBy=%p.path
+WantedBy=iwd-firewalld-zone.path
