@@ -11,6 +11,7 @@ DEBUG="true"
 #   sed: sed
 #   coreutils: tr, od, stat
 #   bash: read, echo, local
+#   grep: grep
 
 IWD_DIR="${XDG_CONFIG_HOME:-/var/lib}/iwd"
 
@@ -105,7 +106,7 @@ function trim_whitespace() {
 
 function get_wanted_zone() {
 	local network="${1}"
-	awk -F= 'BEGIN{rc=1} $1=="FirewalldZone" {print; rc=0; exit} END{exit rc}' "$(config_file "${1}")" 2>/dev/null
+	grep '^FirewalldZone=' "$(config_file "${network}")" | cut -d '=' -f2
 }
 
 
