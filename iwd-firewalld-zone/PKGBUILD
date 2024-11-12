@@ -1,4 +1,4 @@
-# Maintainer: Vince van Oosten <techhazard@codeforyouand.me>
+# Maintainer: Vince van Oosten <techhazard AT codeforyouand.me>
 # Contributor: Rhys Perry <rhysperry111 AT gmail.com>
 pkgname=iwd-firewalld-zone-git
 _srcname=iwd-firewalld-zone
