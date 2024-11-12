@@ -18,11 +18,11 @@ sha256sums=('SKIP')
 
 
 pkgver() {
-  cd "${_srcname}" || exit
-  git describe --long --tags --abbrev=7 | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+  ( cd "${_srcname}" && git describe --long --tags --abbrev=7 | sed 's/\([^-]*-g\)/r\1/;s/-/./g' )
 }
 
 package() {
-	install -Dm 755 -t "${pkgdir}"/usr/bin/ "${_srcname}"/bin/*
-	install -Dm 644 -t "${pkgdir}"/usr/lib/systemd/system/ "${_srcname}"/systemd/system/*
+  cd "${srcdir}/${_srcname}/iwd-firewalld-zone/" || exit
+  install -Dm 755 -t "${pkgdir}"/usr/bin/ ./bin/*
+  install -Dm 644 -t "${pkgdir}"/usr/lib/systemd/system/ ./systemd/system/*
 }
