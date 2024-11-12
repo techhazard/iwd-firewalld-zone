@@ -24,8 +24,7 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-      - name: PKGBUILD Action
-        uses: ouuan/pkgbuild-action@v1.2.0
+      - uses: 2m/arch-pkgbuild-builder@v1.16
         with:
-          # The path to the directory containing the PKGBUILD
-          path: .
+          target: 'pkgbuild'
+          pkgname: 'iwd-firewalld-zone'
