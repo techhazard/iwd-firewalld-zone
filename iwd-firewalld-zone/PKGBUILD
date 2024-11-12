@@ -18,7 +18,7 @@ sha256sums=('SKIP')
 
 
 pkgver() {
-  cd "${_srcname}"
+  cd "${_srcname}" || exit
   git describe --long --tags --abbrev=7 | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
 }
 
