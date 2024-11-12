@@ -26,4 +26,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: PKGBUILD Action
         uses: ouuan/pkgbuild-action@v1.2.0
-    
+        with:
+          # The path to the directory containing the PKGBUILD
+          path: .
