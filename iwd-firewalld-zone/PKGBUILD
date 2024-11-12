@@ -2,7 +2,7 @@
 # Contributor: Rhys Perry <rhysperry111 AT gmail.com>
 pkgname=iwd-firewalld-zone-git
 _srcname=iwd-firewalld-zone
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc='Automatically move wireless interface into firewalld zone based on setting in relevant iwd network file '
 arch=(any)
